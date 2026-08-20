@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Emulador Game Boy</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <h1>🎮 Emulador <span class="gb">GAME BOY</span></h1>
+    <p class="subtitle">Carga una ROM (.gb) y juega — CPU verificada con los tests de Blargg</p>
+  </header>
+
+  <main>
+    <section class="console">
+      <div class="shell">
+        <div class="screen-frame">
+          <div class="screen-top">
+            <span class="dot" id="powerLed"></span>
+            <span class="label-battery">BATTERY</span>
+            <span class="label-matrix">DOT MATRIX WITH STEREO SOUND</span>
+          </div>
+          <canvas id="screen" width="160" height="144"></canvas>
+          <div id="overlay" class="overlay">
+            <p>Arrastra una ROM aquí<br>o usa «Cargar ROM»</p>
+          </div>
+        </div>
+        <div class="brand">Nintendo<span> GAME BOY</span><small>™ (emulado)</small></div>
+
+        <div class="controls-pad">
+          <div class="dpad">
+            <button class="pad up" data-key="up">▲</button>
+            <button class="pad left" data-key="left">◀</button>
+            <button class="pad center"></button>
+            <button class="pad right" data-key="right">▶</button>
+            <button class="pad down" data-key="down">▼</button>
+          </div>
+          <div class="ab">
+            <button class="btn-b" data-key="b">B</button>
+            <button class="btn-a" data-key="a">A</button>
+          </div>
+        </div>
+        <div class="startselect">
+          <button data-key="select">SELECT</button>
+          <button data-key="start">START</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <label class="file-btn">
+          📁 Cargar ROM
+          <input type="file" id="romInput" accept=".gb,.gbc,.bin,.rom">
+        </label>
+        <button id="btnPause" disabled>⏸️ Pausa</button>
+        <button id="btnReset" disabled>🔄 Reiniciar</button>
+        <button id="btnTurbo" disabled>⏩ Turbo</button>
+        <button id="btnMute">🔊 Sonido</button>
+        <select id="paletteSel" title="Paleta de colores">
+          <option value="verde">🟢 Verde clásico</option>
+          <option value="gris">⚪ Escala de grises</option>
+          <option value="ambar">🟠 Ámbar</option>
+        </select>
+      </div>
+
+      <div class="status">
+        <span id="romTitle">Sin ROM</span>
+        <span id="fps"></span>
+      </div>
+
+      <div class="homebrew">
+        <h3>Juegos incluidos (homebrew libre)</h3>
+        <button class="game" data-rom="roms/tobutobugirl.gb">🐰 Tobu Tobu Girl</button>
+        <button class="game" data-rom="roms/2048.gb">🔢 2048</button>
+      </div>
+
+      <div class="help">
+        <h3>Controles de teclado</h3>
+        <table>
+          <tr><td>← ↑ → ↓</td><td>Cruceta</td></tr>
+          <tr><td><kbd>X</kbd> / <kbd>Z</kbd></td><td>A / B</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>Start</td></tr>
+          <tr><td><kbd>Shift</kbd></td><td>Select</td></tr>
+          <tr><td><kbd>Espacio</kbd></td><td>Turbo (mantener)</td></tr>
+          <tr><td><kbd>P</kbd></td><td>Pausa</td></tr>
+        </table>
+        <p class="note">💾 Las partidas guardadas (RAM con batería) se conservan automáticamente en tu navegador.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Emulador DMG escrito en JavaScript · CPU SM83 + PPU + APU (4 canales) + MBC1/2/3/5 ·
+    Tests: cpu_instrs ✔ · instr_timing ✔
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

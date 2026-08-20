@@ -1,0 +1,10 @@
+{
+  "name": "emulador-gameboy",
+  "version": "1.0.0",
+  "description": "Emulador de Game Boy (DMG) en JavaScript",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run_blargg.mjs tests/roms/cpu_instrs.gb 120",
+    "start": "python3 -m http.server 8000 --bind 0.0.0.0"
+  }
+}

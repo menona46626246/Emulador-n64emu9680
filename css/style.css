@@ -1,0 +1,272 @@
+:root {
+  --bg: #1a1c2c;
+  --panel: #24273a;
+  --shell: #c5c8d4;
+  --shell-dark: #9a9daa;
+  --accent: #8bc34a;
+  --burgundy: #8d2b52;
+  --text: #e6e8f0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: radial-gradient(ellipse at top, #252840, var(--bg));
+  color: var(--text);
+  min-height: 100vh;
+}
+
+header {
+  text-align: center;
+  padding: 18px 10px 6px;
+}
+header h1 { margin: 0; font-size: 1.6rem; letter-spacing: 1px; }
+header .gb {
+  color: var(--accent);
+  font-weight: 800;
+}
+.subtitle { margin: 4px 0 0; color: #9aa0b8; font-size: .85rem; }
+
+main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+}
+
+/* ---------- consola ---------- */
+.shell {
+  background: linear-gradient(160deg, var(--shell), var(--shell-dark));
+  border-radius: 12px 12px 48px 12px;
+  padding: 18px 18px 26px;
+  width: 380px;
+  max-width: 95vw;
+  box-shadow: 0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5);
+  user-select: none;
+}
+
+.screen-frame {
+  background: #3e4157;
+  border-radius: 10px 10px 34px 10px;
+  padding: 22px 26px 26px;
+  position: relative;
+}
+.screen-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: .5rem;
+  color: #b0b3c8;
+  letter-spacing: .5px;
+}
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #555;
+  box-shadow: 0 0 4px rgba(0,0,0,.4);
+}
+.dot.on { background: #f33; box-shadow: 0 0 8px #f33; }
+.label-matrix { margin-left: auto; }
+
+canvas#screen {
+  display: block;
+  width: 100%;
+  aspect-ratio: 160 / 144;
+  image-rendering: pixelated;
+  background: #dff5d2;
+  border-radius: 4px;
+  box-shadow: inset 0 2px 12px rgba(0,0,0,.35);
+}
+
+.overlay {
+  position: absolute;
+  inset: 40px 26px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(20, 24, 18, .55);
+  color: #eaf5e2;
+  font-size: .95rem;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.overlay.hidden { display: none; }
+.overlay.dragging { background: rgba(80, 160, 60, .55); }
+
+.brand {
+  margin: 10px 2px 4px;
+  color: #3b3e52;
+  font-style: italic;
+  font-weight: 700;
+  font-size: .95rem;
+}
+.brand span { color: #2b2e44; letter-spacing: 1px; }
+.brand small { font-weight: 400; font-style: normal; margin-left: 6px; color: #6a6d80; }
+
+.controls-pad {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+}
+.pad {
+  border: none;
+  background: #2f3245;
+  color: #8f93ab;
+  font-size: .8rem;
+  cursor: pointer;
+  touch-action: none;
+}
+.pad:active, .pad.pressed { background: #1e2130; color: #fff; }
+.pad.up    { grid-area: 1 / 2; border-radius: 8px 8px 0 0; }
+.pad.left  { grid-area: 2 / 1; border-radius: 8px 0 0 8px; }
+.pad.center{ grid-area: 2 / 2; cursor: default; }
+.pad.right { grid-area: 2 / 3; border-radius: 0 8px 8px 0; }
+.pad.down  { grid-area: 3 / 2; border-radius: 0 0 8px 8px; }
+
+.ab {
+  display: flex;
+  gap: 14px;
+  transform: rotate(-20deg);
+}
+.ab button {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: var(--burgundy);
+  color: #f4d7e2;
+  font-weight: 800;
+  font-size: 1.05rem;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0,0,0,.35), inset 0 -3px 6px rgba(0,0,0,.3);
+  touch-action: none;
+}
+.ab button:active, .ab button.pressed {
+  box-shadow: 0 1px 3px rgba(0,0,0,.35), inset 0 3px 6px rgba(0,0,0,.4);
+  transform: translateY(2px);
+}
+
+.startselect {
+  display: flex;
+  gap: 22px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.startselect button {
+  border: none;
+  background: #6d7086;
+  color: #2a2c3c;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 7px 22px;
+  border-radius: 10px;
+  transform: rotate(-20deg);
+  cursor: pointer;
+  box-shadow: 0 3px 5px rgba(0,0,0,.3), inset 0 -2px 4px rgba(0,0,0,.25);
+  touch-action: none;
+}
+.startselect button:active, .startselect button.pressed {
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.4);
+}
+
+/* ---------- panel lateral ---------- */
+.panel {
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 18px;
+  width: 340px;
+  max-width: 95vw;
+  box-shadow: 0 12px 30px rgba(0,0,0,.4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.toolbar button, .file-btn, .toolbar select {
+  background: #34384f;
+  border: 1px solid #454a66;
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: background .15s;
+}
+.toolbar button:hover:not(:disabled), .file-btn:hover { background: #3f445f; }
+.toolbar button:disabled { opacity: .45; cursor: not-allowed; }
+.toolbar button.active { background: var(--accent); color: #14240a; border-color: var(--accent); }
+.file-btn { display: inline-block; }
+.file-btn input { display: none; }
+
+.status {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 2px;
+  font-size: .85rem;
+  color: #aab0c8;
+}
+#romTitle { font-weight: 600; color: #d8dcf0; }
+
+.homebrew h3, .help h3 {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8a90aa;
+  margin: 18px 0 8px;
+}
+.homebrew .game {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #2c3046;
+  border: 1px solid #3d4260;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: .9rem;
+  cursor: pointer;
+}
+.homebrew .game:hover { background: #363b57; border-color: var(--accent); }
+
+.help table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .82rem;
+}
+.help td { padding: 4px 6px; border-bottom: 1px solid #333850; }
+.help td:first-child { color: #9fd468; width: 45%; }
+kbd {
+  background: #383d58;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #4a4f70;
+  font-size: .78rem;
+}
+.note { font-size: .78rem; color: #8a90aa; }
+
+footer {
+  text-align: center;
+  padding: 14px;
+  font-size: .72rem;
+  color: #666c88;
+}
+
+@media (max-width: 820px) {
+  main { padding: 10px; gap: 14px; }
+}
