@@ -1,0 +1,48 @@
+# Build
+build/
+cmake-build-*/
+out/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.cache/
+compile_commands.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ROMs / firmware (user-provided only — never commit)
+roms/**
+!roms/.gitkeep
+*.z64
+*.n64
+*.v64
+*.bin
+pifdata.bin
+IPL3*
+
+# Logs / traces
+*.log
+*.trace
+
+# Local patch artifacts
+/*.patch
+
+# Python
+__pycache__/
+.venv/
+venv/
+
+# Local deps (if built in-tree)
+deps/
+third_party/sdl2-install/
+
+# Redundant vendor archives / debug symbols
+third_party/*.zip
+third_party/SDL2-*/lib/*/*.pdb
