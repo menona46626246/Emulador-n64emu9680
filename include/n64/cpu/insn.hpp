@@ -183,6 +183,18 @@ inline constexpr u32 RT_BGEZAL = 0x11;
 [[nodiscard]] inline constexpr u32 eret() noexcept {
     return (COP0 << 26) | (1u << 25) | 0x18;
 }
+[[nodiscard]] inline constexpr u32 tlbr() noexcept {
+    return (COP0 << 26) | (0x10u << 21) | 0x01u;
+}
+[[nodiscard]] inline constexpr u32 tlbwi() noexcept {
+    return (COP0 << 26) | (0x10u << 21) | 0x02u;
+}
+[[nodiscard]] inline constexpr u32 tlbwr() noexcept {
+    return (COP0 << 26) | (0x10u << 21) | 0x06u;
+}
+[[nodiscard]] inline constexpr u32 tlbp() noexcept {
+    return (COP0 << 26) | (0x10u << 21) | 0x08u;
+}
 
 // Pseudo: li rt, imm32 via lui+ori (returns only single-insn forms separately)
 [[nodiscard]] inline constexpr u32 dsll(u32 rd, u32 rt, u32 sa) noexcept {

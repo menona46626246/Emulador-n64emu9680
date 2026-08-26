@@ -61,12 +61,13 @@ namespace ExcCode {
 }
 
 /// VR4300 (MIPS III) interpreter.
-/// Phase 1: full base ISA + COP0 + exceptions + delay slots. No TLB walk yet
-/// (KSEG0/1 direct-map; KUSEG identity-maps low 512 MiB for synthetic tests).
+/// VR4300 interpreter with base MIPS III ISA, COP0, precise exceptions,
+/// delay slots, and the 32-entry paired-page TLB.
 class Cpu {
 public:
     static constexpr std::size_t kGprCount = 32;
     static constexpr std::size_t kCop0Count = 32;
+    static constexpr std::size_t kTlbEntryCount = 32;
 
     /// Optional per-instruction trace callback (pc, insn, disasm).
     using TraceFn = std::function<void(u64 pc, u32 insn, const std::string& disasm)>;
@@ -131,7 +132,8 @@ public:
     [[nodiscard]] bool translate(u64 vaddr, bool is_store, PhysicalAddress& out_paddr) const;
 
     /// Raise a CPU exception (public for tests).
-    void raise_exception(u32 exc_code, u64 bad_vaddr = 0, u32 ce = 0);
+    void raise_exception(u32 exc_code, u64 bad_vaddr = 0, u32 ce = 0,
+                         bool tlb_refill = false);
 
     /// Set/clear the RCP external interrupt line (COP0 Cause IP2).
     void set_rcp_interrupt(bool level) noexcept;
@@ -149,6 +151,21 @@ public:
     Cycles execute_block(const BasicBlock& block);
 
 private:
+    enum class TranslationFault : u8 {
+        None,
+        AddressError,
+        TlbMiss,
+        TlbInvalid,
+        TlbModified,
+    };
+
+    struct TlbEntry {
+        u32 page_mask = 0;
+        u32 entry_hi = 0;
+        u32 entry_lo0 = 0;
+        u32 entry_lo1 = 0;
+    };
+
     // Instruction field helpers
     static constexpr u32 op(u32 i)    noexcept { return i >> 26; }
     static constexpr u32 rs(u32 i)    noexcept { return (i >> 21) & 31; }
@@ -189,6 +206,15 @@ private:
     [[nodiscard]] u32 fetch(u64 vaddr);
     [[nodiscard]] bool probe_read(u64 vaddr, int size, PhysicalAddress& paddr);
     [[nodiscard]] bool probe_write(u64 vaddr, int size, PhysicalAddress& paddr);
+    [[nodiscard]] TranslationFault translate_address(
+        u64 vaddr, bool is_store, PhysicalAddress& out_paddr) const noexcept;
+    [[nodiscard]] bool translate_or_raise(u64 vaddr, u64 bad_vaddr,
+                                          bool is_store, PhysicalAddress& out_paddr);
+    void raise_translation_fault(TranslationFault fault, u64 bad_vaddr, bool is_store);
+
+    void tlb_read_indexed();
+    void tlb_write_indexed(u32 index);
+    void tlb_probe();
 
     [[nodiscard]] bool load_byte(u64 vaddr, bool sign_extend, u64& value);
     [[nodiscard]] bool load_half(u64 vaddr, bool sign_extend, u64& value);
@@ -233,6 +259,7 @@ private:
 
     std::array<u64, kGprCount> gpr_{};
     std::array<u32, kCop0Count> cop0_{};
+    std::array<TlbEntry, kTlbEntryCount> tlb_{};
 
     u64 pc_ = 0;
     u64 next_pc_ = 0;

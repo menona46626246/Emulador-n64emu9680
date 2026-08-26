@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "max_runtime_ms": 250,
+    "expected_exit_code": 0,
+    "required_output": [
+      "Booted \"N64EMU SMOKE\""
+    ]
+  },
+  "cases": [
+    {
+      "name": "generated-hle-smoke",
+      "rom": "build/conformance/n64emu_smoke.z64",
+      "sha256": "f8c36072e2ef084d4a98841d8574e2680a4b5fa1958429ae3bf26e316af3c7f9"
+    }
+  ]
+}

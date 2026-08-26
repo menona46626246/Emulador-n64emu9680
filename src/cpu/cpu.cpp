@@ -145,6 +145,15 @@ constexpr u32 CAUSE_BD = 1u << 31;
 constexpr u32 CAUSE_IP2 = 1u << 10;
 constexpr u32 CAUSE_IP7 = 1u << 15;
 
+constexpr u32 TLB_INDEX_MASK = 0x1Fu;
+constexpr u32 TLB_PROBE_FAIL = 1u << 31;
+constexpr u32 TLB_PAGE_MASK = 0x01FF'E000u;
+constexpr u32 TLB_ENTRY_HI_MASK = 0xFFFF'E0FFu;
+constexpr u32 TLB_ENTRY_LO_MASK = 0x3FFF'FFFFu;
+constexpr u32 TLB_ENTRY_LO_GLOBAL = 1u << 0;
+constexpr u32 TLB_ENTRY_LO_VALID = 1u << 1;
+constexpr u32 TLB_ENTRY_LO_DIRTY = 1u << 2;
+
 [[nodiscard]] bool add_overflow_s32(s32 a, s32 b, s32& result) noexcept {
     const s64 wide = static_cast<s64>(a) + static_cast<s64>(b);
     result = static_cast<s32>(wide);
@@ -220,6 +229,7 @@ void mult_s64(s64 a, s64 b, u64& hi, u64& lo) noexcept {
 void Cpu::reset() {
     gpr_.fill(0);
     cop0_.fill(0);
+    tlb_.fill({});
     pc_ = 0xBFC0'0000ull;
     next_pc_ = pc_ + 4;
     hi_ = lo_ = 0;
@@ -249,12 +259,38 @@ void Cpu::set_cop0(std::size_t i, u32 v) noexcept {
     case Cop0Reg::Random:
     case Cop0Reg::PRId:
         return;
+    case Cop0Reg::Index:
+        cop0_[idx] = v & (TLB_PROBE_FAIL | TLB_INDEX_MASK);
+        return;
+    case Cop0Reg::EntryLo0:
+    case Cop0Reg::EntryLo1:
+        cop0_[idx] = v & TLB_ENTRY_LO_MASK;
+        return;
+    case Cop0Reg::Context:
+        // PTEBase is writable; BadVPN2 is maintained by TLB exceptions.
+        cop0_[idx] = (cop0_[idx] & 0x007F'FFF0u) | (v & 0xFF80'0000u);
+        return;
+    case Cop0Reg::PageMask:
+        cop0_[idx] = v & TLB_PAGE_MASK;
+        return;
+    case Cop0Reg::Wired:
+        cop0_[idx] = v & TLB_INDEX_MASK;
+        cop0_[Cop0Reg::Random] = static_cast<u32>(kTlbEntryCount - 1);
+        return;
+    case Cop0Reg::EntryHi:
+        cop0_[idx] = v & TLB_ENTRY_HI_MASK;
+        if (block_cache_) block_cache_->clear();
+        return;
     case Cop0Reg::Compare:
         cop0_[idx] = v;
         cop0_[Cop0Reg::Cause] &= ~(1u << 15);
         return;
     case Cop0Reg::Cause:
         cop0_[idx] = (cop0_[idx] & ~0x300u) | (v & 0x300u);
+        return;
+    case Cop0Reg::Status:
+        cop0_[idx] = v;
+        if (block_cache_) block_cache_->clear();
         return;
     default:
         cop0_[idx] = v;
@@ -370,26 +406,97 @@ Cycles Cpu::execute_block(const BasicBlock& block) {
 // Address translation
 // =============================================================================
 
-bool Cpu::translate(u64 vaddr, bool /*is_store*/, PhysicalAddress& out_paddr) const {
+Cpu::TranslationFault Cpu::translate_address(
+    u64 vaddr, bool is_store, PhysicalAddress& out_paddr) const noexcept {
     const u32 v = static_cast<u32>(vaddr);
+    const u32 sr = cop0_[Cop0Reg::Status];
+    const u32 mode = (sr & (SR_EXL | SR_ERL)) != 0 ? 0u : ((sr & SR_KSU) >> 3);
 
-    // KSEG0 cached
+    // User mode may only access KUSEG. Supervisor mode additionally has SSEG
+    // (0xC0000000-0xDFFFFFFF), while kernel mode can access every segment.
+    if ((mode >= 2u && v >= 0x8000'0000u) ||
+        (mode == 1u && v >= 0xE000'0000u)) {
+        return TranslationFault::AddressError;
+    }
+
+    // KSEG0/KSEG1 are direct-mapped and kernel-only.
     if (v >= 0x8000'0000u && v <= 0x9FFF'FFFFu) {
+        if (mode != 0) return TranslationFault::AddressError;
         out_paddr = v & 0x1FFF'FFFFu;
-        return true;
+        return TranslationFault::None;
     }
-    // KSEG1 uncached
     if (v >= 0xA000'0000u && v <= 0xBFFF'FFFFu) {
+        if (mode != 0) return TranslationFault::AddressError;
         out_paddr = v & 0x1FFF'FFFFu;
-        return true;
+        return TranslationFault::None;
     }
-    // KUSEG: identity-map low 512 MiB for synthetic tests (no TLB yet).
-    // INCÓGNITA U008 — real hardware uses TLB.
-    if (v <= 0x7FFF'FFFFu) {
-        out_paddr = v & 0x1FFF'FFFFu;
-        return true;
+
+    const u32 current_asid = cop0_[Cop0Reg::EntryHi] & 0xFFu;
+    for (const TlbEntry& entry : tlb_) {
+        const u32 pair_mask = (entry.page_mask & TLB_PAGE_MASK) | 0x1FFFu;
+        if ((v & ~pair_mask) != (entry.entry_hi & ~pair_mask)) {
+            continue;
+        }
+
+        const bool global = (entry.entry_lo0 & TLB_ENTRY_LO_GLOBAL) != 0 &&
+                            (entry.entry_lo1 & TLB_ENTRY_LO_GLOBAL) != 0;
+        if (!global && (entry.entry_hi & 0xFFu) != current_asid) {
+            continue;
+        }
+
+        const u32 page_size = (pair_mask + 1u) >> 1;
+        const bool odd_page = (v & page_size) != 0;
+        const u32 lo = odd_page ? entry.entry_lo1 : entry.entry_lo0;
+        if ((lo & TLB_ENTRY_LO_VALID) == 0) {
+            return TranslationFault::TlbInvalid;
+        }
+        if (is_store && (lo & TLB_ENTRY_LO_DIRTY) == 0) {
+            return TranslationFault::TlbModified;
+        }
+
+        const u32 page_offset_mask = page_size - 1u;
+        const u64 physical_base =
+            (static_cast<u64>(lo & 0x3FFF'FFC0u) << 6) &
+            ~static_cast<u64>(page_offset_mask);
+        // The N64 exposes a 29-bit physical bus even though the VR4300 TLB
+        // format can describe wider physical addresses.
+        out_paddr = static_cast<u32>(physical_base | (v & page_offset_mask)) &
+                    0x1FFF'FFFFu;
+        return TranslationFault::None;
     }
+    return TranslationFault::TlbMiss;
+}
+
+bool Cpu::translate(u64 vaddr, bool is_store, PhysicalAddress& out_paddr) const {
+    return translate_address(vaddr, is_store, out_paddr) == TranslationFault::None;
+}
+
+bool Cpu::translate_or_raise(u64 vaddr, u64 bad_vaddr, bool is_store,
+                             PhysicalAddress& out_paddr) {
+    const TranslationFault fault = translate_address(vaddr, is_store, out_paddr);
+    if (fault == TranslationFault::None) return true;
+    raise_translation_fault(fault, bad_vaddr, is_store);
     return false;
+}
+
+void Cpu::raise_translation_fault(TranslationFault fault, u64 bad_vaddr, bool is_store) {
+    switch (fault) {
+    case TranslationFault::AddressError:
+        raise_exception(is_store ? ExcCode::AdES : ExcCode::AdEL, bad_vaddr);
+        break;
+    case TranslationFault::TlbMiss:
+        raise_exception(is_store ? ExcCode::TLBS : ExcCode::TLBL,
+                        bad_vaddr, 0, true);
+        break;
+    case TranslationFault::TlbInvalid:
+        raise_exception(is_store ? ExcCode::TLBS : ExcCode::TLBL, bad_vaddr);
+        break;
+    case TranslationFault::TlbModified:
+        raise_exception(ExcCode::Mod, bad_vaddr);
+        break;
+    case TranslationFault::None:
+        break;
+    }
 }
 
 bool Cpu::kernel_mode() const noexcept {
@@ -413,6 +520,12 @@ void Cpu::advance_count() {
     if (cop0_[Cop0Reg::Count] == cop0_[Cop0Reg::Compare]) {
         cop0_[Cop0Reg::Cause] |= CAUSE_IP7;
     }
+
+    const u32 wired = cop0_[Cop0Reg::Wired] & TLB_INDEX_MASK;
+    const u32 random = cop0_[Cop0Reg::Random] & TLB_INDEX_MASK;
+    cop0_[Cop0Reg::Random] = random <= wired
+                                 ? static_cast<u32>(kTlbEntryCount - 1)
+                                 : random - 1u;
 }
 
 void Cpu::set_rcp_interrupt(bool level) noexcept {
@@ -439,19 +552,23 @@ void Cpu::check_interrupts() {
 // Exceptions
 // =============================================================================
 
-void Cpu::raise_exception(u32 exc_code, u64 bad_vaddr, u32 ce) {
+void Cpu::raise_exception(u32 exc_code, u64 bad_vaddr, u32 ce, bool tlb_refill) {
     ++exception_count_;
+
+    const u32 sr = cop0_[Cop0Reg::Status];
 
     u32 cause = cop0_[Cop0Reg::Cause];
     cause = (cause & ~0x7Cu) | ((exc_code & 0x1Fu) << 2);
     cause = (cause & ~(0x3u << 28)) | ((ce & 0x3u) << 28);
 
-    if (in_delay_slot_) {
-        cause |= CAUSE_BD;
-        cop0_[Cop0Reg::EPC] = static_cast<u32>(pc_ - 4);
-    } else {
-        cause &= ~CAUSE_BD;
-        cop0_[Cop0Reg::EPC] = static_cast<u32>(pc_);
+    if ((sr & SR_EXL) == 0) {
+        if (in_delay_slot_) {
+            cause |= CAUSE_BD;
+            cop0_[Cop0Reg::EPC] = static_cast<u32>(pc_ - 4);
+        } else {
+            cause &= ~CAUSE_BD;
+            cop0_[Cop0Reg::EPC] = static_cast<u32>(pc_);
+        }
     }
     cop0_[Cop0Reg::Cause] = cause;
 
@@ -461,12 +578,21 @@ void Cpu::raise_exception(u32 exc_code, u64 bad_vaddr, u32 ce) {
         cop0_[Cop0Reg::BadVAddr] = static_cast<u32>(bad_vaddr);
     }
 
-    const u32 sr = cop0_[Cop0Reg::Status];
+    if (exc_code == ExcCode::TLBL || exc_code == ExcCode::TLBS ||
+        exc_code == ExcCode::Mod) {
+        const u32 bad = static_cast<u32>(bad_vaddr);
+        cop0_[Cop0Reg::Context] =
+            (cop0_[Cop0Reg::Context] & 0xFF80'0000u) |
+            ((bad >> 9) & 0x007F'FFF0u);
+        cop0_[Cop0Reg::EntryHi] =
+            (cop0_[Cop0Reg::EntryHi] & 0xFFu) | (bad & 0xFFFF'E000u);
+    }
+
     cop0_[Cop0Reg::Status] = sr | SR_EXL;
 
     const bool bev = (sr & SR_BEV) != 0;
     u64 vector;
-    if ((exc_code == ExcCode::TLBL || exc_code == ExcCode::TLBS) && !(sr & SR_EXL)) {
+    if (tlb_refill && !(sr & SR_EXL)) {
         vector = bev ? 0xBFC0'0200ull : 0x8000'0000ull;
     } else {
         vector = bev ? 0xBFC0'0380ull : 0x8000'0180ull;
@@ -493,8 +619,7 @@ u32 Cpu::fetch(u64 vaddr) {
         return 0;
     }
     PhysicalAddress paddr = 0;
-    if (!translate(vaddr, false, paddr)) {
-        raise_exception(ExcCode::TLBL, vaddr);
+    if (!translate_or_raise(vaddr, vaddr, false, paddr)) {
         return 0;
     }
     if (!bus_) {
@@ -510,8 +635,7 @@ bool Cpu::probe_read(u64 vaddr, int size, PhysicalAddress& paddr) {
         raise_exception(ExcCode::AdEL, vaddr);
         return false;
     }
-    if (!translate(vaddr, false, paddr)) {
-        raise_exception(ExcCode::TLBL, vaddr);
+    if (!translate_or_raise(vaddr, vaddr, false, paddr)) {
         return false;
     }
     return bus_ != nullptr;
@@ -522,8 +646,7 @@ bool Cpu::probe_write(u64 vaddr, int size, PhysicalAddress& paddr) {
         raise_exception(ExcCode::AdES, vaddr);
         return false;
     }
-    if (!translate(vaddr, true, paddr)) {
-        raise_exception(ExcCode::TLBS, vaddr);
+    if (!translate_or_raise(vaddr, vaddr, true, paddr)) {
         return false;
     }
     return bus_ != nullptr;
@@ -593,8 +716,7 @@ void Cpu::exec_lwl(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x3ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, false, p) || !bus_) {
-        raise_exception(ExcCode::TLBL, addr);
+    if (!translate_or_raise(aligned, addr, false, p) || !bus_) {
         return;
     }
     const u32 mem = bus_->read32(p);
@@ -609,8 +731,7 @@ void Cpu::exec_lwr(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x3ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, false, p) || !bus_) {
-        raise_exception(ExcCode::TLBL, addr);
+    if (!translate_or_raise(aligned, addr, false, p) || !bus_) {
         return;
     }
     const u32 mem = bus_->read32(p);
@@ -625,8 +746,7 @@ void Cpu::exec_swl(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x3ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, true, p) || !bus_) {
-        raise_exception(ExcCode::TLBS, addr);
+    if (!translate_or_raise(aligned, addr, true, p) || !bus_) {
         return;
     }
     const u32 n = static_cast<u32>(addr & 3ull);
@@ -642,8 +762,7 @@ void Cpu::exec_swr(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x3ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, true, p) || !bus_) {
-        raise_exception(ExcCode::TLBS, addr);
+    if (!translate_or_raise(aligned, addr, true, p) || !bus_) {
         return;
     }
     const u32 n = static_cast<u32>(addr & 3ull);
@@ -659,8 +778,7 @@ void Cpu::exec_ldl(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x7ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, false, p) || !bus_) {
-        raise_exception(ExcCode::TLBL, addr);
+    if (!translate_or_raise(aligned, addr, false, p) || !bus_) {
         return;
     }
     const u64 mem = bus_->read64(p);
@@ -674,8 +792,7 @@ void Cpu::exec_ldr(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x7ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, false, p) || !bus_) {
-        raise_exception(ExcCode::TLBL, addr);
+    if (!translate_or_raise(aligned, addr, false, p) || !bus_) {
         return;
     }
     const u64 mem = bus_->read64(p);
@@ -689,8 +806,7 @@ void Cpu::exec_sdl(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x7ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, true, p) || !bus_) {
-        raise_exception(ExcCode::TLBS, addr);
+    if (!translate_or_raise(aligned, addr, true, p) || !bus_) {
         return;
     }
     const u32 n = static_cast<u32>(addr & 7ull);
@@ -706,8 +822,7 @@ void Cpu::exec_sdr(u32 insn) {
     const u64 addr = rs64(insn) + static_cast<s64>(simm(insn));
     const u64 aligned = addr & ~0x7ull;
     PhysicalAddress p = 0;
-    if (!translate(aligned, true, p) || !bus_) {
-        raise_exception(ExcCode::TLBS, addr);
+    if (!translate_or_raise(aligned, addr, true, p) || !bus_) {
         return;
     }
     const u32 n = static_cast<u32>(addr & 7ull);
@@ -1518,6 +1633,43 @@ void Cpu::exec_regimm(u32 insn) {
 // COP0
 // =============================================================================
 
+void Cpu::tlb_read_indexed() {
+    const TlbEntry& entry = tlb_[cop0_[Cop0Reg::Index] & TLB_INDEX_MASK];
+    cop0_[Cop0Reg::PageMask] = entry.page_mask;
+    cop0_[Cop0Reg::EntryHi] = entry.entry_hi;
+    cop0_[Cop0Reg::EntryLo0] = entry.entry_lo0;
+    cop0_[Cop0Reg::EntryLo1] = entry.entry_lo1;
+    if (block_cache_) block_cache_->clear();
+}
+
+void Cpu::tlb_write_indexed(u32 index) {
+    TlbEntry& entry = tlb_[index & TLB_INDEX_MASK];
+    entry.page_mask = cop0_[Cop0Reg::PageMask] & TLB_PAGE_MASK;
+    entry.entry_hi = cop0_[Cop0Reg::EntryHi] & TLB_ENTRY_HI_MASK;
+    entry.entry_lo0 = cop0_[Cop0Reg::EntryLo0] & TLB_ENTRY_LO_MASK;
+    entry.entry_lo1 = cop0_[Cop0Reg::EntryLo1] & TLB_ENTRY_LO_MASK;
+    if (block_cache_) block_cache_->clear();
+}
+
+void Cpu::tlb_probe() {
+    const u32 query = cop0_[Cop0Reg::EntryHi];
+    const u32 query_asid = query & 0xFFu;
+    for (u32 i = 0; i < static_cast<u32>(kTlbEntryCount); ++i) {
+        const TlbEntry& entry = tlb_[i];
+        const u32 pair_mask = (entry.page_mask & TLB_PAGE_MASK) | 0x1FFFu;
+        if ((query & ~pair_mask) != (entry.entry_hi & ~pair_mask)) {
+            continue;
+        }
+        const bool global = (entry.entry_lo0 & TLB_ENTRY_LO_GLOBAL) != 0 &&
+                            (entry.entry_lo1 & TLB_ENTRY_LO_GLOBAL) != 0;
+        if (global || (entry.entry_hi & 0xFFu) == query_asid) {
+            cop0_[Cop0Reg::Index] = i;
+            return;
+        }
+    }
+    cop0_[Cop0Reg::Index] = TLB_PROBE_FAIL;
+}
+
 void Cpu::exec_cop0(u32 insn) {
     if (!coprocessor_usable(0)) {
         raise_exception(ExcCode::CpU, 0, 0);
@@ -1549,11 +1701,16 @@ void Cpu::exec_cop0(u32 insn) {
         const u32 c0fn = fn(insn);
         switch (c0fn) {
         case 0x01: // TLBR
+            tlb_read_indexed();
+            break;
         case 0x02: // TLBWI
+            tlb_write_indexed(cop0_[Cop0Reg::Index]);
+            break;
         case 0x06: // TLBWR
+            tlb_write_indexed(cop0_[Cop0Reg::Random]);
+            break;
         case 0x08: // TLBP
-            // TLB ops: no-op until TLB implemented (Phase 2/10).
-            N64_TRACE("COP0 TLB op {:02X} stub", c0fn);
+            tlb_probe();
             break;
         case 0x18: // ERET
             do_eret();

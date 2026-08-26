@@ -19,7 +19,9 @@ Emulador de Nintendo 64 modular, orientado a **homebrew legal**, escrito en **C+
 | 8    | Audio básico (AI + SDL)             | **Completada** |
 | 9    | Timing / frame pacing               | **Completada** |
 | 10   | Debugger / overlay / traces         | **Completada** |
-| 11   | Optimización…                       | Pendiente   |
+| 11   | Optimización                        | **Completada** |
+| 12   | Optimización avanzada               | **Completada** |
+| 13   | CI, banco de compatibilidad y TLB   | **Base completada** |
 
 ## Requisitos
 
@@ -66,7 +68,7 @@ cmake --build build -j$(nproc)
 # Smoke headless (cierra solo a los 500 ms)
 ./build/n64emu --headless --auto-close 500
 
-# Con homebrew legal (fases posteriores)
+# Con homebrew legal
 ./build/n64emu --rom roms/mi_homebrew.z64
 
 ./build/n64emu --help
@@ -78,6 +80,15 @@ cmake --build build -j$(nproc)
 cmake --build build --target check
 # o:
 cd build && ctest --output-on-failure
+```
+
+Banco de compatibilidad reproducible:
+
+```bash
+python scripts/generate_smoke_rom.py --output build/conformance/n64emu_smoke.z64
+python scripts/run_conformance.py --emulator build/n64emu \
+  --manifest tests/conformance/manifest.json \
+  --report build/conformance/report.json
 ```
 
 ## Estructura
@@ -104,6 +115,7 @@ roms/            Homebrew del usuario (gitignored)
 - [Incógnitas de hardware](docs/UNKNOWNS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Homebrews probados](docs/HOMEBREW.md)
+- [Banco de compatibilidad](docs/CONFORMANCE.md)
 
 ## Licencia del código
 

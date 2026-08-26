@@ -16,13 +16,16 @@ Solo se documentan imágenes **legales** (homebrew, demos open-source, o ROMs co
 | `ai_beep.z64` | `roms/` (sintético) | 8 | DMA AI 440 Hz square ~16 kHz | 0.25 s buffer |
 | Suite `Ai*.*` | `tests/ai/test_ai.cpp` | 8 | 9/9 pass | rate, DMA, queue, tick, pull |
 | Suite `Debugger.*` | `tests/debug/test_debugger.cpp` | 10 | 9/9 pass | BP, step, watch, trace dump |
+| `n64emu_smoke.z64` | Generada por `scripts/generate_smoke_rom.py` | 13 | Pass headless | Hash fijo y ejecución automática en CI |
+| Suite `CpuTlb.*` | `tests/cpu/test_tlb.cpp` | 13 | 16/16 pass | traducción, ASID, PageMask, excepciones y caché |
 
 ## Cómo añadir una entrada
 
 1. Construir o descargar homebrew desde su autor (licencia permisiva).
 2. Colocar el `.z64` en `roms/` (gitignored).
-3. Ejecutar: `./build/n64emu --rom roms/foo.z64 --log-level debug`
-4. Anotar comportamiento y actualizar esta tabla.
+3. Añadir un caso a un manifiesto local siguiendo `docs/CONFORMANCE.md`.
+4. Ejecutar `scripts/run_conformance.py` y revisar su informe JSON.
+5. Anotar comportamiento y actualizar esta tabla solo si la prueba es reproducible.
 
 ## Fuentes sugeridas (para fases futuras)
 

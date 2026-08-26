@@ -11,7 +11,8 @@ Detalles no asumidos como hechos. Cada entrada debe resolverse con documentació
 | U005 | RDP | Precisión de coverage/blending/filtrado/triángulos | Fase 6+: FillRect + TexRect point-sample + TMEM OK; falta bilinear, blender cycles, coverage y triángulos | Parcial |
 | U006 | RSP | Hazards de vector pipeline / acumulación | Fase 7: scalar OK; COP2 es NOP. Falta VU + hazards reales | Parcial |
 | U007 | AI | FIFO depth exacta y relación DACRATE↔reloj | Fase 8: 1 DMA + 1 queued, rate=DAC_CLOCK/(dac+1), tick por CPU cycle. Falta paridad exacta de underrun/FIFO HW | Parcial |
-| U008 | TLB | Comportamiento de wired entries y random en cold boot | Lectura COP0 post-reset en homebrew | Abierta |
+| U008 | TLB | Valor y cadencia exactos de `Random` frente a `Wired`, especialmente en cold boot | Fase 13 implementa rango 0–31 y decremento por instrucción; comparar lecturas COP0 contra hardware | Parcial |
+| U009 | TLB | Regiones virtuales de 64 bits y vector XTLB del VR4300 | Pruebas dirigidas en hardware antes de ampliar el modelo actual de segmentos de 32 bits | Abierta |
 
 ## Regla
 

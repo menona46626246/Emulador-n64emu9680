@@ -50,13 +50,23 @@ public:
     [[nodiscard]] u64 misses() const noexcept { return misses_; }
 
 private:
+    static constexpr std::size_t kNotAliased = static_cast<std::size_t>(-1);
+
     struct Slot {
         u64 tag_pc = ~0ull;
         BasicBlock block;
         bool valid = false;
+        std::size_t aliased_position = kNotAliased;
     };
 
+    void mark_physically_aliased(std::size_t slot_index);
+    void unmark_physically_aliased(std::size_t slot_index) noexcept;
+    void invalidate_slot(std::size_t slot_index) noexcept;
+
     std::vector<Slot> table_;
+    // TLB-backed virtual blocks cannot be found from the physical address by
+    // the direct-table index, so keep a compact reverse invalidation set.
+    std::vector<std::size_t> physically_aliased_slots_;
     std::size_t count_ = 0;
     mutable u64 hits_ = 0;
     mutable u64 misses_ = 0;

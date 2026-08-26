@@ -223,6 +223,7 @@ if(N64EMU_BUILD_TESTS)
         tests/bus/test_mmio_dma.cpp
         tests/cpu/test_cpu_smoke.cpp
         tests/cpu/test_cpu_interpreter.cpp
+        tests/cpu/test_tlb.cpp
         tests/core/test_boot.cpp
         tests/core/test_timing.cpp
         tests/vi/test_vi.cpp

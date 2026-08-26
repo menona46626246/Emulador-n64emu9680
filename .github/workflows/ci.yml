@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-core:
+    name: Linux / GCC / core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DN64EMU_BUILD_FRONTEND=OFF
+          -DN64EMU_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  linux-sanitizers:
+    name: Linux / Clang / ASan+UBSan
+    runs-on: ubuntu-24.04
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: >-
+          cmake -S . -B build-asan
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_C_COMPILER=clang
+          -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          -DN64EMU_BUILD_FRONTEND=OFF
+          -DN64EMU_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build-asan --parallel 2
+      - name: Test under sanitizers
+        run: ./build-asan/n64emu_tests
+
+  windows-full:
+    name: Windows / MSVC / frontend
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: >-
+          cmake -S . -B build -A x64
+          -DN64EMU_BUILD_FRONTEND=ON
+          -DN64EMU_HEADLESS=ON
+          -DN64EMU_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build --config RelWithDebInfo --parallel 2
+      - name: Test
+        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure
+      - name: Generate legal smoke ROM
+        run: python scripts/generate_smoke_rom.py --output build/conformance/n64emu_smoke.z64
+      - name: Run compatibility bank
+        run: >-
+          python scripts/run_conformance.py
+          --emulator build/RelWithDebInfo/n64emu.exe
+          --manifest tests/conformance/manifest.json
+          --report build/conformance/report.json
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-report-windows
+          path: build/conformance/report.json
+          if-no-files-found: ignore

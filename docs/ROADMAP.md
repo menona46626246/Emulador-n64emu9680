@@ -53,6 +53,30 @@
 - [x] Adaptive Frame Pacing: temporizador híbrido (sleep grueso + spin-wait fino submilisegundo)
 - [x] Tests unitarios de Block Cache (compilación, paridad de ejecución, invalidación)
 
+### Fase 13 — Confiabilidad, compatibilidad y memoria virtual
+- [x] CI en Windows/MSVC y Linux/GCC, más ASan+UBSan con Clang
+- [x] Banco headless reproducible con manifiesto, hash SHA-256 e informe JSON
+- [x] ROM smoke original generada dentro de la CI; ninguna ROM se distribuye
+- [x] TLB VR4300 de 32 entradas: ASID/global, PageMask, V/D y páginas pares/impares
+- [x] Operaciones COP0 `TLBR`, `TLBWI`, `TLBWR` y `TLBP`
+- [x] Excepciones refill/invalid/modified, actualización de `BadVAddr`, `Context` y `EntryHi`
+- [x] Invalidación del Basic Block Cache ante cambios de traducción
+- [ ] Ampliar el manifiesto local con homebrew externo que el usuario pueda usar legalmente
+
+## Próximas fases
+
+### Fase 14 — COP1/FPU
+- [ ] Completar aritmética, conversiones, comparaciones y excepciones IEEE-754
+- [ ] Añadir pruebas diferenciales y casos de control `FCR31`
+
+### Fase 15 — RSP vectorial
+- [ ] Implementar registros COP2, acumulador y operaciones vectoriales
+- [ ] Validar microcódigos homebrew reproducibles
+
+### Fase 16 — RDP avanzado
+- [ ] Triángulos, coverage, blender y filtrado bilinear
+- [ ] Golden images deterministas por comando y escena
+
 ## No-objetivos (por ahora)
 
 - Compatibilidad comercial completa

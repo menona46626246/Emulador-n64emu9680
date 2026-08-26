@@ -714,6 +714,5 @@ TEST(CpuInterpreter, Kseg0Kseg1Translate) {
     EXPECT_EQ(p, 0x0000'1234u);
     EXPECT_TRUE(cpu.translate(0xA000'5678ull, false, p));
     EXPECT_EQ(p, 0x0000'5678u);
-    EXPECT_TRUE(cpu.translate(0x0000'0100ull, false, p));
-    EXPECT_EQ(p, 0x0000'0100u);
+    EXPECT_FALSE(cpu.translate(0x0000'0100ull, false, p));
 }
