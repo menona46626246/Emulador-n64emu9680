@@ -9,7 +9,7 @@ Detalles no asumidos como hechos. Cada entrada debe resolverse con documentació
 | U003 | PIF | Secuencia mínima HLE de boot compatible con libdragon/homebrew modernos | HLE IPL3 (Fase 3) + seeds os*/CIC/TV + carga PIF/IPL3 user-owned + LLE-PIF opcional. Falta paridad byte-exacta de GPRs post-IPL3 vs hardware y CIC challenge 6105 | Parcial |
 | U004 | VI | Momento exacto de latched `VI_CURRENT` e interrupt | Fase 4: step de half-lines + fire en igualdad con V_INTR; falta paridad exacta NTSC/PAL y serrate | Parcial |
 | U005 | RDP | Precisión de coverage/blending/filtrado/triángulos | Fase 6+: FillRect + TexRect point-sample + TMEM OK; falta bilinear, blender cycles, coverage y triángulos | Parcial |
-| U006 | RSP | Hazards de vector pipeline / acumulación | Fase 7: scalar OK; COP2 es NOP. Falta VU + hazards reales | Parcial |
+| U006 | RSP | Hazards y latencias del pipeline vectorial | Fase 15 cubre el resultado arquitectónico COP2, acumuladores, flags, división y memoria. Comparar microcódigos que dependan de hazards contra hardware real | Parcial — semántica funcional cubierta; timing interno no modelado |
 | U007 | AI | FIFO depth exacta y relación DACRATE↔reloj | Fase 8: 1 DMA + 1 queued, rate=DAC_CLOCK/(dac+1), tick por CPU cycle. Falta paridad exacta de underrun/FIFO HW | Parcial |
 | U008 | TLB | Valor y cadencia exactos de `Random` frente a `Wired`, especialmente en cold boot | Fase 13 implementa rango 0–31 y decremento por instrucción; comparar lecturas COP0 contra hardware | Parcial |
 | U009 | TLB | Regiones virtuales de 64 bits y vector XTLB del VR4300 | Pruebas dirigidas en hardware antes de ampliar el modelo actual de segmentos de 32 bits | Abierta |

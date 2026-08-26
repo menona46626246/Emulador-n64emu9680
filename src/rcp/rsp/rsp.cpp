@@ -43,7 +43,7 @@ constexpr u32 OP_SWL     = 0x2A;
 constexpr u32 OP_SW      = 0x2B;
 constexpr u32 OP_SWR     = 0x2E;
 
-// Vector / COP2 memory ops (stub)
+// Vector / COP2 memory ops
 constexpr u32 OP_LWC2    = 0x32;
 constexpr u32 OP_SWC2    = 0x3A;
 
@@ -84,6 +84,16 @@ void Rsp::reset() {
     dmem_.fill(0);
     imem_.fill(0);
     gpr_.fill(0);
+    for (auto& reg : vpr_) {
+        reg.fill(0);
+    }
+    accumulator_.fill(0);
+    vco_ = 0;
+    vcc_ = 0;
+    vce_ = 0;
+    div_in_ = 0;
+    div_out_ = 0;
+    div_high_pending_ = false;
     pc_ = 0;
     next_pc_ = 4;
     branch_pending_ = false;
@@ -360,11 +370,8 @@ void Rsp::execute(u32 insn) {
         break;
     case OP_SWR: exec_swr(insn); break;
 
-    case OP_LWC2:
-    case OP_SWC2:
-        // Vector load/store — Phase 7 scalar only: NOP.
-        N64_TRACE("RSP COP2 mem op={:02X} stub", op(insn));
-        break;
+    case OP_LWC2: exec_vector_memory(insn, false); break;
+    case OP_SWC2: exec_vector_memory(insn, true);  break;
 
     default:
         N64_WARN("RSP reserved op={:02X} insn={:08X} @ {:03X}",
@@ -505,12 +512,6 @@ void Rsp::exec_cop0(u32 insn) {
         return;
     }
     N64_TRACE("RSP COP0 rs={:02X} stub", co_rs);
-}
-
-void Rsp::exec_cop2(u32 insn) {
-    // Vector unit — Phase 7: accept as NOP so microcode can run scalar parts.
-    N64_TRACE("RSP COP2 stub insn={:08X}", insn);
-    (void)insn;
 }
 
 void Rsp::exec_lwl(u32 insn) {

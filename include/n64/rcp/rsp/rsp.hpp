@@ -13,11 +13,12 @@ class Bus;
 class SpRegisters;
 class MipsInterface;
 
-/// Reality Signal Processor — scalar interpreter (Phase 7).
-/// Vector COP2 is stubbed (ops accepted as NOP / logged).
+/// Reality Signal Processor scalar and COP2 vector interpreter.
 class Rsp {
 public:
     static constexpr std::size_t kGprCount = 32;
+    static constexpr std::size_t kVectorRegisterCount = 32;
+    static constexpr std::size_t kVectorLaneCount = 8;
     static constexpr u32 kImemMask = 0xFFCu;
 
     using BreakCallback = std::function<void(bool intr_on_break)>;
@@ -48,6 +49,23 @@ public:
     void set_gpr(std::size_t i, u32 v) noexcept {
         if ((i & 31) != 0) gpr_[i & 31] = v;
     }
+
+    [[nodiscard]] u16 vpr(std::size_t reg, std::size_t lane) const noexcept {
+        return vpr_[reg & 31][lane & 7];
+    }
+    void set_vpr(std::size_t reg, std::size_t lane, u16 value) noexcept {
+        vpr_[reg & 31][lane & 7] = value;
+    }
+    [[nodiscard]] s64 accumulator(std::size_t lane) const noexcept {
+        return accumulator_[lane & 7];
+    }
+    void set_accumulator(std::size_t lane, s64 value) noexcept;
+    [[nodiscard]] u16 vco() const noexcept { return vco_; }
+    [[nodiscard]] u16 vcc() const noexcept { return vcc_; }
+    [[nodiscard]] u8 vce() const noexcept { return vce_; }
+    void set_vco(u16 value) noexcept { vco_ = value; }
+    void set_vcc(u16 value) noexcept { vcc_ = value; }
+    void set_vce(u8 value) noexcept { vce_ = value; }
 
     [[nodiscard]] u64 cycles() const noexcept { return cycles_; }
     [[nodiscard]] u64 instructions_retired() const noexcept { return retired_; }
@@ -97,7 +115,12 @@ private:
     void exec_regimm(u32 insn);
     void exec_cop0(u32 insn);
     void exec_cop2(u32 insn);
+    void exec_vector(u32 insn);
+    void exec_vector_memory(u32 insn, bool store);
     void do_break(u32 insn);
+
+    [[nodiscard]] u8 vector_byte(u32 reg, u32 byte) const noexcept;
+    void set_vector_byte(u32 reg, u32 byte, u8 value) noexcept;
 
     // Unaligned LWL/LWR/SWL/SWR (big-endian, like VR4300)
     void exec_lwl(u32 insn);
@@ -108,6 +131,14 @@ private:
     std::array<u8, kSpDmemSize> dmem_{};
     std::array<u8, kSpImemSize> imem_{};
     std::array<u32, kGprCount> gpr_{};
+    std::array<std::array<u16, kVectorLaneCount>, kVectorRegisterCount> vpr_{};
+    std::array<s64, kVectorLaneCount> accumulator_{};
+    u16 vco_ = 0;
+    u16 vcc_ = 0;
+    u8 vce_ = 0;
+    s32 div_in_ = 0;
+    s32 div_out_ = 0;
+    bool div_high_pending_ = false;
 
     u32 pc_ = 0;
     u32 next_pc_ = 4;

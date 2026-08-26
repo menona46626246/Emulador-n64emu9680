@@ -19,11 +19,77 @@ inline constexpr u32 ANDI    = 0x0C;
 inline constexpr u32 ORI     = 0x0D;
 inline constexpr u32 LUI     = 0x0F;
 inline constexpr u32 COP0    = 0x10;
+inline constexpr u32 COP2    = 0x12;
 inline constexpr u32 LW      = 0x23;
 inline constexpr u32 SW      = 0x2B;
 inline constexpr u32 LB      = 0x20;
 inline constexpr u32 LBU     = 0x24;
 inline constexpr u32 SB      = 0x28;
+inline constexpr u32 LWC2    = 0x32;
+inline constexpr u32 SWC2    = 0x3A;
+
+inline constexpr u32 COP2_MFC = 0x00;
+inline constexpr u32 COP2_CFC = 0x02;
+inline constexpr u32 COP2_MTC = 0x04;
+inline constexpr u32 COP2_CTC = 0x06;
+
+inline constexpr u32 VF_VMULF = 0x00;
+inline constexpr u32 VF_VMULU = 0x01;
+inline constexpr u32 VF_VRNDP = 0x02;
+inline constexpr u32 VF_VMULQ = 0x03;
+inline constexpr u32 VF_VMUDL = 0x04;
+inline constexpr u32 VF_VMUDM = 0x05;
+inline constexpr u32 VF_VMUDN = 0x06;
+inline constexpr u32 VF_VMUDH = 0x07;
+inline constexpr u32 VF_VMACF = 0x08;
+inline constexpr u32 VF_VMACU = 0x09;
+inline constexpr u32 VF_VRNDN = 0x0A;
+inline constexpr u32 VF_VMACQ = 0x0B;
+inline constexpr u32 VF_VMADL = 0x0C;
+inline constexpr u32 VF_VMADM = 0x0D;
+inline constexpr u32 VF_VMADN = 0x0E;
+inline constexpr u32 VF_VMADH = 0x0F;
+inline constexpr u32 VF_VADD  = 0x10;
+inline constexpr u32 VF_VSUB  = 0x11;
+inline constexpr u32 VF_VABS  = 0x13;
+inline constexpr u32 VF_VADDC = 0x14;
+inline constexpr u32 VF_VSUBC = 0x15;
+inline constexpr u32 VF_VSAR  = 0x1D;
+inline constexpr u32 VF_VLT   = 0x20;
+inline constexpr u32 VF_VEQ   = 0x21;
+inline constexpr u32 VF_VNE   = 0x22;
+inline constexpr u32 VF_VGE   = 0x23;
+inline constexpr u32 VF_VCL   = 0x24;
+inline constexpr u32 VF_VCH   = 0x25;
+inline constexpr u32 VF_VCR   = 0x26;
+inline constexpr u32 VF_VMRG  = 0x27;
+inline constexpr u32 VF_VAND  = 0x28;
+inline constexpr u32 VF_VNAND = 0x29;
+inline constexpr u32 VF_VOR   = 0x2A;
+inline constexpr u32 VF_VNOR  = 0x2B;
+inline constexpr u32 VF_VXOR  = 0x2C;
+inline constexpr u32 VF_VNXOR = 0x2D;
+inline constexpr u32 VF_VRCP  = 0x30;
+inline constexpr u32 VF_VRCPL = 0x31;
+inline constexpr u32 VF_VRCPH = 0x32;
+inline constexpr u32 VF_VMOV  = 0x33;
+inline constexpr u32 VF_VRSQ  = 0x34;
+inline constexpr u32 VF_VRSQL = 0x35;
+inline constexpr u32 VF_VRSQH = 0x36;
+inline constexpr u32 VF_VNOP  = 0x37;
+
+inline constexpr u32 VMEM_LBV = 0x00;
+inline constexpr u32 VMEM_LSV = 0x01;
+inline constexpr u32 VMEM_LLV = 0x02;
+inline constexpr u32 VMEM_LDV = 0x03;
+inline constexpr u32 VMEM_LQV = 0x04;
+inline constexpr u32 VMEM_LRV = 0x05;
+inline constexpr u32 VMEM_LPV = 0x06;
+inline constexpr u32 VMEM_LUV = 0x07;
+inline constexpr u32 VMEM_LHV = 0x08;
+inline constexpr u32 VMEM_LFV = 0x09;
+inline constexpr u32 VMEM_LWV = 0x0A;
+inline constexpr u32 VMEM_LTV = 0x0B;
 
 inline constexpr u32 FN_SLL  = 0x00;
 inline constexpr u32 FN_SRL  = 0x02;
@@ -84,6 +150,107 @@ inline constexpr u32 FN_SLT  = 0x2A;
 }
 [[nodiscard]] inline constexpr u32 mtc0(u32 rt, u32 rd) noexcept {
     return (COP0 << 26) | (4u << 21) | (rt << 16) | (rd << 11);
+}
+
+[[nodiscard]] inline constexpr u32 cop2_transfer(
+    u32 subop, u32 rt, u32 vd, u32 element = 0) noexcept {
+    return (COP2 << 26) | ((subop & 31) << 21) | ((rt & 31) << 16) |
+           ((vd & 31) << 11) | ((element & 15) << 7);
+}
+[[nodiscard]] inline constexpr u32 mfc2(u32 rt, u32 vd, u32 element = 0) noexcept {
+    return cop2_transfer(COP2_MFC, rt, vd, element);
+}
+[[nodiscard]] inline constexpr u32 cfc2(u32 rt, u32 control) noexcept {
+    return cop2_transfer(COP2_CFC, rt, control);
+}
+[[nodiscard]] inline constexpr u32 mtc2(u32 rt, u32 vd, u32 element = 0) noexcept {
+    return cop2_transfer(COP2_MTC, rt, vd, element);
+}
+[[nodiscard]] inline constexpr u32 ctc2(u32 rt, u32 control) noexcept {
+    return cop2_transfer(COP2_CTC, rt, control);
+}
+
+[[nodiscard]] inline constexpr u32 vector(
+    u32 function, u32 vd, u32 vs, u32 vt, u32 element = 0) noexcept {
+    return (COP2 << 26) | ((0x10u | (element & 15)) << 21) |
+           ((vt & 31) << 16) | ((vs & 31) << 11) | ((vd & 31) << 6) |
+           (function & 63);
+}
+
+[[nodiscard]] inline constexpr u32 vector_memory(
+    bool store, u32 subop, u32 vt, u32 base, u32 element, s8 offset) noexcept {
+    return ((store ? SWC2 : LWC2) << 26) | ((base & 31) << 21) |
+           ((vt & 31) << 16) | ((subop & 31) << 11) |
+           ((element & 15) << 7) | (static_cast<u8>(offset) & 0x7Fu);
+}
+[[nodiscard]] inline constexpr u32 lbv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LBV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 lsv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LSV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 llv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LLV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 ldv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LDV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 lqv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LQV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 lrv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LRV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 sbv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LBV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 ssv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LSV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 slv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LLV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 sdv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LDV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 sqv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LQV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 srv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LRV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 lpv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LPV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 luv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LUV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 lhv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LHV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 lfv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LFV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 ltv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(false, VMEM_LTV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 spv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LPV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 suv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LUV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 shv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LHV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 sfv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LFV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 swv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LWV, vt, base, element, off);
+}
+[[nodiscard]] inline constexpr u32 stv(u32 vt, u32 element, s8 off, u32 base) noexcept {
+    return vector_memory(true, VMEM_LTV, vt, base, element, off);
 }
 
 /// Store BE word into a byte buffer (IMEM/DMEM/RDRAM). No address mask —

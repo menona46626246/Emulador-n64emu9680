@@ -69,11 +69,13 @@
 - [x] Excepciones IEEE-754, causa/enable/flags, redondeo y flush mediante `FCR31`
 - [x] Pruebas diferenciales, casos extremos y paridad con Basic Block Cache
 
-## Próximas fases
-
 ### Fase 15 — RSP vectorial
-- [ ] Implementar registros COP2, acumulador y operaciones vectoriales
-- [ ] Validar microcódigos homebrew reproducibles
+- [x] Registros COP2, acumuladores de 48 bits y banderas `VCO/VCC/VCE`
+- [x] ALU, multiplicación/acumulación, clip, lógica y unidad recíproca
+- [x] Memoria vectorial normal, packed y transpose
+- [x] Microcódigo IMEM reproducible y validación con AddressSanitizer
+
+## Próximas fases
 
 ### Fase 16 — RDP avanzado
 - [ ] Triángulos, coverage, blender y filtrado bilinear

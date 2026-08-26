@@ -152,6 +152,7 @@ add_library(n64_core
     src/pif/pif.cpp
     src/pif/boot.cpp
     src/rcp/rsp/rsp.cpp
+    src/rcp/rsp/rsp_vector.cpp
     src/rcp/rdp/rdp.cpp
     src/debug/debugger.cpp
 )
@@ -237,6 +238,7 @@ if(N64EMU_BUILD_TESTS)
         tests/pif/test_input.cpp
         tests/rdp/test_rdp.cpp
         tests/rsp/test_rsp.cpp
+        tests/rsp/test_rsp_vector.cpp
         tests/ai/test_ai.cpp
         tests/debug/test_debugger.cpp
         tests/core/test_optimization.cpp
