@@ -228,11 +228,13 @@ void mult_s64(s64 a, s64 b, u64& hi, u64& lo) noexcept {
 
 void Cpu::reset() {
     gpr_.fill(0);
+    fpr_.fill(0);
     cop0_.fill(0);
     tlb_.fill({});
     pc_ = 0xBFC0'0000ull;
     next_pc_ = pc_ + 4;
     hi_ = lo_ = 0;
+    fcr31_ = 0;
     cycles_ = 0;
     halted_ = false;
     in_delay_slot_ = false;
@@ -1274,18 +1276,51 @@ void Cpu::execute(u32 insn) {
         store_double(rs64(insn) + static_cast<s64>(simm(insn)), rt64(insn));
         break;
 
-    case OP_LWC1:
-    case OP_LDC1:
-    case OP_SWC1:
-    case OP_SDC1:
-        // FPU load/store — require CU1
+    case OP_LWC1: {
         if (!coprocessor_usable(1)) {
             raise_exception(ExcCode::CpU, 0, 1);
         } else {
-            // FPU not implemented yet — treat as NOP but log.
-            N64_TRACE("FPU load/store stub opcode={:02X}", op(insn));
+            u64 value = 0;
+            if (load_word(rs64(insn) + static_cast<s64>(simm(insn)), false, value)) {
+                write_fpr_word(rt(insn), static_cast<u32>(value));
+            }
         }
         break;
+    }
+    case OP_LDC1: {
+        if (!coprocessor_usable(1)) {
+            raise_exception(ExcCode::CpU, 0, 1);
+        } else if (!fpu_fr_mode() && (rt(insn) & 1u) != 0) {
+            raise_fpu_unimplemented();
+        } else {
+            u64 value = 0;
+            if (load_double(rs64(insn) + static_cast<s64>(simm(insn)), value)) {
+                (void)write_fpr_double(rt(insn), value);
+            }
+        }
+        break;
+    }
+    case OP_SWC1:
+        if (!coprocessor_usable(1)) {
+            raise_exception(ExcCode::CpU, 0, 1);
+        } else {
+            store_word(rs64(insn) + static_cast<s64>(simm(insn)),
+                       read_fpr_word(rt(insn)));
+        }
+        break;
+    case OP_SDC1: {
+        if (!coprocessor_usable(1)) {
+            raise_exception(ExcCode::CpU, 0, 1);
+            break;
+        }
+        u64 value = 0;
+        if (!read_fpr_double(rt(insn), value)) {
+            raise_fpu_unimplemented();
+            break;
+        }
+        store_double(rs64(insn) + static_cast<s64>(simm(insn)), value);
+        break;
+    }
 
     default:
         ++unknown_opcode_count_;
@@ -1734,16 +1769,6 @@ void Cpu::exec_cop0(u32 insn) {
         }
         break;
     }
-}
-
-void Cpu::exec_cop1(u32 insn) {
-    if (!coprocessor_usable(1)) {
-        raise_exception(ExcCode::CpU, 0, 1);
-        return;
-    }
-    // FPU not in Phase 1 scope — NOP with count.
-    N64_TRACE("COP1 stub insn={:08X}", insn);
-    (void)insn;
 }
 
 void Cpu::exec_cop2(u32 insn) {

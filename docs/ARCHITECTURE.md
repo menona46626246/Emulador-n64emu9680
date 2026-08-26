@@ -41,7 +41,7 @@
 |------|-----------------|
 | `frontend` | OS: ventana, teclado/gamepad, menú, carga de archivos |
 | `core` | Orquestación, reset, HLE boot, bucle de ciclos, scheduler |
-| `cpu` | ISA MIPS III intérprete, COP0, excepciones y TLB de 32 entradas; regiones virtuales de 64 bits pendientes |
+| `cpu` | ISA MIPS III intérprete, COP0, COP1/FPU, excepciones y TLB de 32 entradas; regiones virtuales de 64 bits pendientes |
 | `bus` | Mapa físico, RDRAM/cart/SP mem, MMIO (MI/PI/SI/RI/SP/DP/VI/AI), DMA, IRQ MI→CPU |
 | `cart` | Header .z64, detección CIC, entrypoint fixup |
 | `rcp/*` | RSP (microcódigo) + RDP (raster) |
@@ -67,6 +67,6 @@
 
 ## Testing
 
-- **Unitarios:** CPU opcodes/TLB, bus endianness, DMA, scheduler.
+- **Unitarios:** CPU opcodes/TLB/COP1, bus endianness, DMA, scheduler.
 - **Integración:** smoke generado y homebrew legal en `roms/` (no en git), mediante manifiestos de conformidad.
 - **Golden logs:** traces de PC/registros comparados byte-a-byte (Fase 1+).

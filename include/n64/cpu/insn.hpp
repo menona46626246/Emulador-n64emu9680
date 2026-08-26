@@ -24,6 +24,7 @@ inline constexpr u32 ORI     = 0x0D;
 inline constexpr u32 XORI    = 0x0E;
 inline constexpr u32 LUI     = 0x0F;
 inline constexpr u32 COP0    = 0x10;
+inline constexpr u32 COP1    = 0x11;
 inline constexpr u32 BEQL    = 0x14;
 inline constexpr u32 BNEL    = 0x15;
 inline constexpr u32 DADDIU  = 0x19;
@@ -37,10 +38,14 @@ inline constexpr u32 SB      = 0x28;
 inline constexpr u32 SH      = 0x29;
 inline constexpr u32 SW      = 0x2B;
 inline constexpr u32 LL      = 0x30;
+inline constexpr u32 LWC1    = 0x31;
 inline constexpr u32 LLD     = 0x34;
+inline constexpr u32 LDC1    = 0x35;
 inline constexpr u32 LD      = 0x37;
 inline constexpr u32 SC      = 0x38;
+inline constexpr u32 SWC1    = 0x39;
 inline constexpr u32 SCD     = 0x3C;
+inline constexpr u32 SDC1    = 0x3D;
 inline constexpr u32 SD      = 0x3F;
 
 // SPECIAL functions
@@ -195,6 +200,84 @@ inline constexpr u32 RT_BGEZAL = 0x11;
 [[nodiscard]] inline constexpr u32 tlbp() noexcept {
     return (COP0 << 26) | (0x10u << 21) | 0x08u;
 }
+
+// COP1 transfers, branches, memory operations, and formatted arithmetic.
+[[nodiscard]] inline constexpr u32 cop1_transfer(u32 rs, u32 rt, u32 fs) noexcept {
+    return (COP1 << 26) | (rs << 21) | (rt << 16) | (fs << 11);
+}
+[[nodiscard]] inline constexpr u32 mfc1(u32 rt, u32 fs) noexcept {
+    return cop1_transfer(0x00, rt, fs);
+}
+[[nodiscard]] inline constexpr u32 dmfc1(u32 rt, u32 fs) noexcept {
+    return cop1_transfer(0x01, rt, fs);
+}
+[[nodiscard]] inline constexpr u32 cfc1(u32 rt, u32 fcr) noexcept {
+    return cop1_transfer(0x02, rt, fcr);
+}
+[[nodiscard]] inline constexpr u32 mtc1(u32 rt, u32 fs) noexcept {
+    return cop1_transfer(0x04, rt, fs);
+}
+[[nodiscard]] inline constexpr u32 dmtc1(u32 rt, u32 fs) noexcept {
+    return cop1_transfer(0x05, rt, fs);
+}
+[[nodiscard]] inline constexpr u32 ctc1(u32 rt, u32 fcr) noexcept {
+    return cop1_transfer(0x06, rt, fcr);
+}
+[[nodiscard]] inline constexpr u32 bc1(u32 branch_code, s16 off) noexcept {
+    return (COP1 << 26) | (0x08u << 21) | ((branch_code & 3u) << 16) |
+           static_cast<u16>(off);
+}
+[[nodiscard]] inline constexpr u32 bc1f(s16 off) noexcept { return bc1(0, off); }
+[[nodiscard]] inline constexpr u32 bc1t(s16 off) noexcept { return bc1(1, off); }
+[[nodiscard]] inline constexpr u32 bc1fl(s16 off) noexcept { return bc1(2, off); }
+[[nodiscard]] inline constexpr u32 bc1tl(s16 off) noexcept { return bc1(3, off); }
+
+[[nodiscard]] inline constexpr u32 cop1_fmt(
+    u32 fmt, u32 fd, u32 fs, u32 ft, u32 function) noexcept {
+    return (COP1 << 26) | (fmt << 21) | (ft << 16) | (fs << 11) |
+           (fd << 6) | function;
+}
+inline constexpr u32 FMT_S = 0x10;
+inline constexpr u32 FMT_D = 0x11;
+inline constexpr u32 FMT_W = 0x14;
+inline constexpr u32 FMT_L = 0x15;
+
+[[nodiscard]] inline constexpr u32 add_s(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_S, fd, fs, ft, 0x00); }
+[[nodiscard]] inline constexpr u32 sub_s(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_S, fd, fs, ft, 0x01); }
+[[nodiscard]] inline constexpr u32 mul_s(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_S, fd, fs, ft, 0x02); }
+[[nodiscard]] inline constexpr u32 div_s(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_S, fd, fs, ft, 0x03); }
+[[nodiscard]] inline constexpr u32 sqrt_s(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_S, fd, fs, 0, 0x04); }
+[[nodiscard]] inline constexpr u32 abs_s(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_S, fd, fs, 0, 0x05); }
+[[nodiscard]] inline constexpr u32 mov_s(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_S, fd, fs, 0, 0x06); }
+[[nodiscard]] inline constexpr u32 neg_s(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_S, fd, fs, 0, 0x07); }
+[[nodiscard]] inline constexpr u32 add_d(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_D, fd, fs, ft, 0x00); }
+[[nodiscard]] inline constexpr u32 sub_d(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_D, fd, fs, ft, 0x01); }
+[[nodiscard]] inline constexpr u32 mul_d(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_D, fd, fs, ft, 0x02); }
+[[nodiscard]] inline constexpr u32 div_d(u32 fd, u32 fs, u32 ft) noexcept { return cop1_fmt(FMT_D, fd, fs, ft, 0x03); }
+[[nodiscard]] inline constexpr u32 sqrt_d(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_D, fd, fs, 0, 0x04); }
+[[nodiscard]] inline constexpr u32 abs_d(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_D, fd, fs, 0, 0x05); }
+[[nodiscard]] inline constexpr u32 mov_d(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_D, fd, fs, 0, 0x06); }
+[[nodiscard]] inline constexpr u32 neg_d(u32 fd, u32 fs) noexcept { return cop1_fmt(FMT_D, fd, fs, 0, 0x07); }
+
+[[nodiscard]] inline constexpr u32 cvt_s(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x20); }
+[[nodiscard]] inline constexpr u32 cvt_d(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x21); }
+[[nodiscard]] inline constexpr u32 cvt_w(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x24); }
+[[nodiscard]] inline constexpr u32 cvt_l(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x25); }
+[[nodiscard]] inline constexpr u32 round_w(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x0C); }
+[[nodiscard]] inline constexpr u32 trunc_w(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x0D); }
+[[nodiscard]] inline constexpr u32 ceil_w(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x0E); }
+[[nodiscard]] inline constexpr u32 floor_w(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x0F); }
+[[nodiscard]] inline constexpr u32 round_l(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x08); }
+[[nodiscard]] inline constexpr u32 trunc_l(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x09); }
+[[nodiscard]] inline constexpr u32 ceil_l(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x0A); }
+[[nodiscard]] inline constexpr u32 floor_l(u32 source_fmt, u32 fd, u32 fs) noexcept { return cop1_fmt(source_fmt, fd, fs, 0, 0x0B); }
+[[nodiscard]] inline constexpr u32 c_cond_s(u32 fs, u32 ft, u32 condition) noexcept { return cop1_fmt(FMT_S, 0, fs, ft, 0x30u | (condition & 0xFu)); }
+[[nodiscard]] inline constexpr u32 c_cond_d(u32 fs, u32 ft, u32 condition) noexcept { return cop1_fmt(FMT_D, 0, fs, ft, 0x30u | (condition & 0xFu)); }
+
+[[nodiscard]] inline constexpr u32 lwc1(u32 ft, u32 base, s16 off) noexcept { return itype_s(LWC1, ft, base, off); }
+[[nodiscard]] inline constexpr u32 ldc1(u32 ft, u32 base, s16 off) noexcept { return itype_s(LDC1, ft, base, off); }
+[[nodiscard]] inline constexpr u32 swc1(u32 ft, u32 base, s16 off) noexcept { return itype_s(SWC1, ft, base, off); }
+[[nodiscard]] inline constexpr u32 sdc1(u32 ft, u32 base, s16 off) noexcept { return itype_s(SDC1, ft, base, off); }
 
 // Pseudo: li rt, imm32 via lui+ori (returns only single-insn forms separately)
 [[nodiscard]] inline constexpr u32 dsll(u32 rd, u32 rt, u32 sa) noexcept {

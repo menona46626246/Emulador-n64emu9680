@@ -58,6 +58,7 @@ namespace ExcCode {
     constexpr u32 CpU    = 11; // Coprocessor unusable
     constexpr u32 Ov     = 12; // Arithmetic overflow
     constexpr u32 Tr     = 13; // Trap
+    constexpr u32 FPE    = 15; // Floating-point exception
 }
 
 /// VR4300 (MIPS III) interpreter.
@@ -66,6 +67,7 @@ namespace ExcCode {
 class Cpu {
 public:
     static constexpr std::size_t kGprCount = 32;
+    static constexpr std::size_t kFprCount = 32;
     static constexpr std::size_t kCop0Count = 32;
     static constexpr std::size_t kTlbEntryCount = 32;
 
@@ -108,6 +110,12 @@ public:
     [[nodiscard]] u64 lo() const noexcept { return lo_; }
     void set_hi(u64 v) noexcept { hi_ = v; }
     void set_lo(u64 v) noexcept { lo_ = v; }
+
+    // ----- COP1 -------------------------------------------------------------
+    /// Raw physical floating-point general register value.
+    [[nodiscard]] u64 fpr(std::size_t i) const noexcept { return fpr_[i & 31]; }
+    void set_fpr(std::size_t i, u64 value) noexcept { fpr_[i & 31] = value; }
+    [[nodiscard]] u32 fcr31() const noexcept { return fcr31_; }
 
     // ----- COP0 --------------------------------------------------------------
     [[nodiscard]] u32 cop0(std::size_t i) const noexcept { return cop0_[i & 31]; }
@@ -244,7 +252,16 @@ private:
     void exec_regimm(u32 insn);
     void exec_cop0(u32 insn);
     void exec_cop1(u32 insn);
+    void exec_cop1_format(u32 insn);
     void exec_cop2(u32 insn);
+
+    [[nodiscard]] bool fpu_fr_mode() const noexcept;
+    [[nodiscard]] u32 read_fpr_word(u32 index) const noexcept;
+    void write_fpr_word(u32 index, u32 value) noexcept;
+    [[nodiscard]] bool read_fpr_double(u32 index, u64& value) const noexcept;
+    [[nodiscard]] bool write_fpr_double(u32 index, u64 value) noexcept;
+    [[nodiscard]] bool finish_fpu_operation(u32 flags);
+    void raise_fpu_unimplemented();
 
     void do_syscall(u32 insn);
     void do_break(u32 insn);
@@ -258,6 +275,7 @@ private:
     void advance_count();
 
     std::array<u64, kGprCount> gpr_{};
+    std::array<u64, kFprCount> fpr_{};
     std::array<u32, kCop0Count> cop0_{};
     std::array<TlbEntry, kTlbEntryCount> tlb_{};
 
@@ -265,6 +283,7 @@ private:
     u64 next_pc_ = 0;
     u64 hi_ = 0;
     u64 lo_ = 0;
+    u32 fcr31_ = 0;
 
     Cycles cycles_ = 0;
     bool halted_ = false;

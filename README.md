@@ -22,6 +22,7 @@ Emulador de Nintendo 64 modular, orientado a **homebrew legal**, escrito en **C+
 | 11   | Optimización                        | **Completada** |
 | 12   | Optimización avanzada               | **Completada** |
 | 13   | CI, banco de compatibilidad y TLB   | **Base completada** |
+| 14   | COP1/FPU VR4300                     | **Completada** |
 
 ## Requisitos
 
@@ -116,6 +117,7 @@ roms/            Homebrew del usuario (gitignored)
 - [Roadmap](docs/ROADMAP.md)
 - [Homebrews probados](docs/HOMEBREW.md)
 - [Banco de compatibilidad](docs/CONFORMANCE.md)
+- [COP1/FPU](docs/COP1_FPU.md)
 
 ## Licencia del código
 

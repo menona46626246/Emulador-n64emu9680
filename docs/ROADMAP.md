@@ -63,11 +63,13 @@
 - [x] Invalidación del Basic Block Cache ante cambios de traducción
 - [ ] Ampliar el manifiesto local con homebrew externo que el usuario pueda usar legalmente
 
-## Próximas fases
-
 ### Fase 14 — COP1/FPU
-- [ ] Completar aritmética, conversiones, comparaciones y excepciones IEEE-754
-- [ ] Añadir pruebas diferenciales y casos de control `FCR31`
+- [x] Registros FGR/FCR, modos `Status.FR=0/1` y transferencias/memoria COP1
+- [x] Aritmética S/D, conversiones W/L/S/D, comparaciones y ramas `BC1*`
+- [x] Excepciones IEEE-754, causa/enable/flags, redondeo y flush mediante `FCR31`
+- [x] Pruebas diferenciales, casos extremos y paridad con Basic Block Cache
+
+## Próximas fases
 
 ### Fase 15 — RSP vectorial
 - [ ] Implementar registros COP2, acumulador y operaciones vectoriales

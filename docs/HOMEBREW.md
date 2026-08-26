@@ -18,6 +18,7 @@ Solo se documentan imágenes **legales** (homebrew, demos open-source, o ROMs co
 | Suite `Debugger.*` | `tests/debug/test_debugger.cpp` | 10 | 9/9 pass | BP, step, watch, trace dump |
 | `n64emu_smoke.z64` | Generada por `scripts/generate_smoke_rom.py` | 13 | Pass headless | Hash fijo y ejecución automática en CI |
 | Suite `CpuTlb.*` | `tests/cpu/test_tlb.cpp` | 13 | 16/16 pass | traducción, ASID, PageMask, excepciones y caché |
+| Suite `CpuCop1.*` | `tests/cpu/test_cop1.cpp` | 14 | 28/28 pass | FGR/FCR, S/D/W/L, ramas, redondeo y excepciones |
 
 ## Cómo añadir una entrada
 

@@ -13,6 +13,7 @@ Detalles no asumidos como hechos. Cada entrada debe resolverse con documentació
 | U007 | AI | FIFO depth exacta y relación DACRATE↔reloj | Fase 8: 1 DMA + 1 queued, rate=DAC_CLOCK/(dac+1), tick por CPU cycle. Falta paridad exacta de underrun/FIFO HW | Parcial |
 | U008 | TLB | Valor y cadencia exactos de `Random` frente a `Wired`, especialmente en cold boot | Fase 13 implementa rango 0–31 y decremento por instrucción; comparar lecturas COP0 contra hardware | Parcial |
 | U009 | TLB | Regiones virtuales de 64 bits y vector XTLB del VR4300 | Pruebas dirigidas en hardware antes de ampliar el modelo actual de segmentos de 32 bits | Abierta |
+| U010 | COP1 | Paridad bit a bit de resultados límite entre hosts, payloads NaN y temporización de pipeline | Comparar ROMs dirigidas contra un VR4300 y adoptar un backend IEEE-754 determinista si aparecen diferencias | Parcial — semántica arquitectónica cubierta; el cálculo finito usa el entorno FP del host |
 
 ## Regla
 

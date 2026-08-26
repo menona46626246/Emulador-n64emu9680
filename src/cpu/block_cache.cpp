@@ -31,6 +31,8 @@ inline bool is_branch_or_jump(u32 insn) noexcept {
     case 0x16: // BLEZL
     case 0x17: // BGTZL
         return true;
+    case 0x11: // COP1
+        return ((insn >> 21) & 31u) == 0x08u; // BC1F/T/FL/TL
     default:
         return false;
     }

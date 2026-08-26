@@ -137,6 +137,7 @@ add_library(n64_core
     src/core/emulator.cpp
     src/core/scheduler.cpp
     src/cpu/cpu.cpp
+    src/cpu/cop1.cpp
     src/cpu/block_cache.cpp
     src/bus/bus.cpp
     src/bus/mi.cpp
@@ -155,6 +156,11 @@ add_library(n64_core
     src/debug/debugger.cpp
 )
 add_library(n64::core ALIAS n64_core)
+if(MSVC)
+    set_source_files_properties(src/cpu/cop1.cpp PROPERTIES COMPILE_OPTIONS "/fp:strict")
+else()
+    set_source_files_properties(src/cpu/cop1.cpp PROPERTIES COMPILE_OPTIONS "-frounding-math")
+endif()
 target_include_directories(n64_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -224,6 +230,7 @@ if(N64EMU_BUILD_TESTS)
         tests/cpu/test_cpu_smoke.cpp
         tests/cpu/test_cpu_interpreter.cpp
         tests/cpu/test_tlb.cpp
+        tests/cpu/test_cop1.cpp
         tests/core/test_boot.cpp
         tests/core/test_timing.cpp
         tests/vi/test_vi.cpp
